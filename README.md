@@ -65,6 +65,25 @@ Edit the files in the `prompts/` folder:
 
 These are plain English instructions, not code. Changes take effect on the next digest.
 
+## Customizing Your Sources
+
+The default source list (AI builders and podcasts) is curated centrally at
+`config/default-sources.json` and updated automatically.
+
+**If you want to track your own set of people** — YouTube channels, podcasts,
+newsletters — you can add a personal `user-sources.json`:
+
+```bash
+cp config/user-sources.example.json ~/.follow-builders/user-sources.json
+```
+
+Edit the file with your own sources. The format supports:
+- **YouTube channels** — `@handle` or `/channel/UCxxx` URLs
+- **Playlists** — `/playlist?list=PLxxx` URLs
+- **RSS/Atom feeds** — podcasts, newsletters, blogs
+
+See `config/user-sources.example.json` for the full format with comments.
+
 ## Default Sources
 
 ### Podcasts (6)
@@ -100,13 +119,22 @@ git clone https://github.com/zarazhangrui/follow-builders.git ~/.claude/skills/f
 cd ~/.claude/skills/follow-builders/scripts && npm install
 ```
 
+If you plan to use Telegram or email delivery, set up your keys:
+
+```bash
+mkdir -p ~/.follow-builders
+cp ~/.claude/skills/follow-builders/.env.example ~/.follow-builders/.env
+# Edit ~/.follow-builders/.env and fill in your delivery key
+```
+
 ## Requirements
 
 - An AI agent (OpenClaw, Claude Code, or similar)
 - Internet connection (to fetch the central feed)
 
-That's it. No API keys needed. All content (blog articles + YouTube transcripts + X/Twitter posts)
-is fetched centrally and updated daily.
+That's it. No API keys needed for reading content. All blog articles, YouTube
+transcripts, and X/Twitter posts are fetched centrally and updated daily.
+Telegram or email delivery requires a bot token or Resend API key (see `.env.example`).
 
 ## How It Works
 
@@ -117,6 +145,63 @@ is fetched centrally and updated daily.
 4. The digest is delivered to your messaging app (or shown in-chat)
 
 See [examples/sample-digest.md](examples/sample-digest.md) for what the output looks like.
+
+## Running Your Own Fork
+
+If you want to curate your own set of AI builders (or any topic), fork this repo
+and run the feed generator yourself. The architecture is two parts:
+
+1. **Feed generator** (`scripts/generate-feed.js`) — runs on GitHub Actions daily,
+   fetches content, and commits `feed-*.json` to your repo
+2. **Skill** (`SKILL.md` + `scripts/prepare-digest.js`) — reads from your fork's
+   feed URLs and remixes content into a digest
+
+### Step 1: Fork and configure sources
+
+Edit `config/default-sources.json` to set your own X accounts, podcast RSS feeds,
+and blog URLs.
+
+### Step 2: Set GitHub Secrets
+
+In your fork's repository settings, add two secrets:
+
+| Secret | Where to get it |
+|---|---|
+| `X_BEARER_TOKEN` | [developer.twitter.com](https://developer.twitter.com/en/portal/dashboard) — requires Basic tier ($100/mo) or higher |
+| `POD2TXT_API_KEY` | [pod2txt.vercel.app](https://pod2txt.vercel.app) — for podcast transcripts |
+
+The GitHub Actions workflow in `.github/workflows/generate-feeds.yml` is already
+configured to use these secrets.
+
+### Step 3: Point the skill at your fork
+
+In `scripts/prepare-digest.js`, update the feed URLs at the top of the file to
+point to your fork:
+
+```js
+const FEED_X_URL = 'https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/feed-x.json';
+const FEED_PODCASTS_URL = 'https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/feed-podcasts.json';
+const FEED_BLOGS_URL = 'https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/feed-blogs.json';
+const PROMPTS_BASE = 'https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/prompts';
+```
+
+### Step 4: Install and run
+
+```bash
+git clone https://github.com/YOUR_USERNAME/YOUR_REPO.git ~/.claude/skills/follow-builders
+cd ~/.claude/skills/follow-builders/scripts && npm install
+```
+
+Your feed will update daily via GitHub Actions. The first run may take a few
+minutes as podcast transcripts are fetched.
+
+### Cost and API notes
+
+- **X/Twitter API** — Basic tier required for timeline access (~$100/mo). Free tier
+  does not support fetching user timelines.
+- **pod2txt** — check [pod2txt.vercel.app](https://pod2txt.vercel.app) for current pricing.
+- **Blogs** — scraped directly, no API key needed.
+- **AI remixing** — uses your existing Claude Code or OpenClaw API access.
 
 ## Privacy
 

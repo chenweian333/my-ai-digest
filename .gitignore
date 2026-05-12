@@ -1,4 +1,37 @@
+# Dependencies
 scripts/node_modules/
+
+# Environment variables — NEVER commit these
 .env
+.env.local
+.env.*.local
+
+# Personal runtime data (lives in ~/.follow-builders/, not in this repo)
+# Listed here in case files are accidentally copied into the project directory
+content.db
+*.db
+bot-offset.json
+bot.log
+config.json
+state-user.json
+user-sources.json
+
+# Browser automation profiles
+.browser-profiles/
+browser-profiles/
+chrome-user-data/
+playwright-profiles/
+**/user-data-dir/
+
+# Logs
 *.log
+
+# OS files
 .DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+*.swp
+*.swo
+*~

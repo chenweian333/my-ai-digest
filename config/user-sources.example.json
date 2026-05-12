@@ -1,0 +1,77 @@
+{
+  "_note": "Personal source list template. Copy this file to ~/.follow-builders/user-sources.json and replace the examples with your own sources. YouTube entries use @handle or /channel/ID. RSS entries must be a direct feed URL. This file is never overwritten by skill updates.",
+
+  "youtube": [
+    {
+      "_comment": "Use the @handle format for most channels",
+      "name": "Channel Name",
+      "url": "https://www.youtube.com/@YourChannelHandle",
+      "category": "ai_tech"
+    },
+    {
+      "_comment": "Use /channel/UCxxx format when no @handle is available",
+      "name": "Channel Without Handle",
+      "url": "https://www.youtube.com/channel/UCxxxxxxxxxxxxxxxxxxxxxxxx",
+      "category": "science"
+    },
+    {
+      "_comment": "Use /playlist?list=PL... to track a specific playlist instead of a whole channel",
+      "name": "Specific Playlist",
+      "url": "https://www.youtube.com/playlist?list=PLxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "category": "business"
+    }
+  ],
+
+  "rss": [
+    {
+      "_comment": "Podcast with RSS feed",
+      "name": "Example Podcast",
+      "rss": "https://feeds.example.com/podcast.rss",
+      "url": "https://example.com/podcast",
+      "type": "podcast",
+      "category": "tech"
+    },
+    {
+      "_comment": "Blog or newsletter via RSS",
+      "name": "Example Newsletter",
+      "rss": "https://example.substack.com/feed",
+      "url": "https://example.substack.com",
+      "type": "newsletter",
+      "category": "ai"
+    },
+    {
+      "_comment": "Blog with RSS feed",
+      "name": "Example Blog",
+      "rss": "https://example.com/rss.xml",
+      "url": "https://example.com/blog",
+      "type": "blog",
+      "category": "productivity"
+    }
+  ],
+
+  "_categories": {
+    "_note": "Categories are free-form labels — use any strings that make sense to you.",
+    "suggested": [
+      "ai_tech",
+      "business",
+      "science",
+      "philosophy",
+      "mindset",
+      "health",
+      "health_science",
+      "productivity",
+      "leadership",
+      "psychology",
+      "culture"
+    ]
+  },
+
+  "_not_trackable": {
+    "_note": "Sources that cannot be tracked via RSS or YouTube feeds",
+    "examples": [
+      "X/Twitter accounts — require the X API (only available in the feed generator for fork operators)",
+      "TikTok-only creators — no public RSS or YouTube feed",
+      "Paywalled content — RSS feeds typically only show free articles"
+    ]
+  }
+}
