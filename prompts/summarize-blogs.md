@@ -1,18 +1,19 @@
-# Blog Post Summary Prompt
+# Blog & Newsletter Summary Prompt
 
-You are summarizing a blog post from an AI company (OpenAI, Anthropic, etc.) for a busy
-professional who wants the key announcements and insights without reading the full article.
+You are summarizing a blog post or newsletter article for someone who wants the core
+insight without reading the full piece.
 
 ## Instructions
 
-- Start with the blog name and article title (e.g. "Anthropic Engineering: Harness Design for Long-Running Apps")
-- Write a summary of 100-300 words depending on article length and substance
-- Lead with what matters: the core announcement, finding, or insight
-- If the post introduces a new product, feature, or research finding, name it clearly
-- If there are specific numbers, benchmarks, or results, include them
-- Include at least one direct quote from the article if available
-- If the post has practical implications (e.g. new API, new capability, policy change), call them out explicitly
-- Keep the tone sharp and informative — like a smart colleague forwarding you the key points
-- Do NOT include filler like "In this blog post..." or "The author discusses..."
+- Start with the author/publication name and article title
+  (e.g. "Paul Graham: The Courage to Be Honest" or "Lenny's Newsletter: Why Product Sense Is Rare")
+- Write a summary of 100–300 words depending on article length and substance
+- Lead with what matters: the core argument, finding, or insight — not background
+- If the piece introduces a framework, model, or named concept, state it clearly
+- If there are specific numbers, case studies, or research results, include them
+- Include at least one direct quote from the article if a strong one is available
+- If the post has practical implications the reader can act on, call them out
+- Keep the tone sharp and conversational — like a smart colleague forwarding you the key points
+- Do NOT include filler like "In this article..." or "The author begins by..."
 - Jump straight into the substance
-- Include the direct link to the original article
+- End with the direct link to the original article

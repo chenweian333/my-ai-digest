@@ -1,16 +1,16 @@
 #!/usr/bin/env node
 
 // ============================================================================
-// Follow Builders — Central Feed Generator
+// My AI Digest — Feed Generator
 // ============================================================================
-// Runs on GitHub Actions (daily at 6am UTC) to fetch content and publish
-// feed-x.json, feed-podcasts.json, and feed-blogs.json.
+// Runs on GitHub Actions (daily at 6am UTC) to fetch podcast transcripts and
+// blog articles, publishing feed-podcasts.json and feed-blogs.json.
 //
-// Deduplication: tracks previously seen tweet IDs, episode GUIDs, and article
-// URLs in state-feed.json so content is never repeated across runs.
+// Deduplication: tracks previously seen episode GUIDs and article URLs in
+// state-feed.json so content is never repeated across runs.
 //
-// Usage: node generate-feed.js [--tweets-only | --podcasts-only | --blogs-only]
-// Env vars needed: X_BEARER_TOKEN, POD2TXT_API_KEY
+// Usage: node generate-feed.js [--podcasts-only | --blogs-only]
+// Env vars needed: POD2TXT_API_KEY
 // ============================================================================
 
 import { readFile, writeFile } from "fs/promises";
@@ -20,15 +20,12 @@ import { join } from "path";
 // -- Constants ---------------------------------------------------------------
 
 const POD2TXT_BASE = "https://pod2txt.vercel.app/api";
-const X_API_BASE = "https://api.x.com/2";
 // Some RSS hosts (notably Substack) block non-browser user agents from cloud IPs.
 // Using a real Chrome UA avoids 403 errors in GitHub Actions.
 const RSS_USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
-const TWEET_LOOKBACK_HOURS = 24;
 const PODCAST_LOOKBACK_HOURS = 336; // 14 days — podcasts publish weekly/biweekly, not daily
 const BLOG_LOOKBACK_HOURS = 72;
-const MAX_TWEETS_PER_USER = 3;
 const MAX_ARTICLES_PER_BLOG = 3;
 
 // State file lives in the repo root so it gets committed by GitHub Actions
@@ -42,25 +39,22 @@ const STATE_PATH = join(SCRIPT_DIR, "..", "state-feed.json");
 
 async function loadState() {
   if (!existsSync(STATE_PATH)) {
-    return { seenTweets: {}, seenVideos: {}, seenArticles: {} };
+    return { seenVideos: {}, seenArticles: {} };
   }
   try {
     const state = JSON.parse(await readFile(STATE_PATH, "utf-8"));
-    // Ensure seenArticles exists for older state files
     if (!state.seenArticles) state.seenArticles = {};
+    if (!state.seenVideos) state.seenVideos = {};
     return state;
   } catch {
-    return { seenTweets: {}, seenVideos: {}, seenArticles: {} };
+    return { seenVideos: {}, seenArticles: {} };
   }
 }
 
 async function saveState(state) {
   // Prune entries older than 7 days to prevent the file from growing forever
   const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
-  for (const [id, ts] of Object.entries(state.seenTweets)) {
-    if (ts < cutoff) delete state.seenTweets[id];
-  }
-  for (const [id, ts] of Object.entries(state.seenVideos)) {
+  for (const [id, ts] of Object.entries(state.seenVideos || {})) {
     if (ts < cutoff) delete state.seenVideos[id];
   }
   for (const [id, ts] of Object.entries(state.seenArticles || {})) {
@@ -518,120 +512,6 @@ async function fetchPodcastContent(podcasts, apiKey, state, errors) {
   return [];
 }
 
-// -- X/Twitter Fetching (Official API v2) ------------------------------------
-
-async function fetchXContent(xAccounts, bearerToken, state, errors) {
-  const results = [];
-  const cutoff = new Date(Date.now() - TWEET_LOOKBACK_HOURS * 60 * 60 * 1000);
-
-  // Batch lookup all user IDs (1 API call)
-  const handles = xAccounts.map((a) => a.handle);
-  let userMap = {};
-
-  for (let i = 0; i < handles.length; i += 100) {
-    const batch = handles.slice(i, i + 100);
-    try {
-      const res = await fetch(
-        `${X_API_BASE}/users/by?usernames=${batch.join(",")}&user.fields=name,description`,
-        { headers: { Authorization: `Bearer ${bearerToken}` } },
-      );
-
-      if (!res.ok) {
-        errors.push(`X API: User lookup failed: HTTP ${res.status}`);
-        continue;
-      }
-
-      const data = await res.json();
-      for (const user of data.data || []) {
-        userMap[user.username.toLowerCase()] = {
-          id: user.id,
-          name: user.name,
-          description: user.description || "",
-        };
-      }
-      if (data.errors) {
-        for (const err of data.errors) {
-          errors.push(`X API: User not found: ${err.value || err.detail}`);
-        }
-      }
-    } catch (err) {
-      errors.push(`X API: User lookup error: ${err.message}`);
-    }
-  }
-
-  // Fetch recent tweets per user (max 3, exclude retweets/replies)
-  for (const account of xAccounts) {
-    const userData = userMap[account.handle.toLowerCase()];
-    if (!userData) continue;
-
-    try {
-      const res = await fetch(
-        `${X_API_BASE}/users/${userData.id}/tweets?` +
-          `max_results=5` + // fetch 5, then filter to 3 new ones
-          `&tweet.fields=created_at,public_metrics,referenced_tweets,note_tweet` +
-          `&exclude=retweets,replies` +
-          `&start_time=${cutoff.toISOString()}`,
-        { headers: { Authorization: `Bearer ${bearerToken}` } },
-      );
-
-      if (!res.ok) {
-        if (res.status === 429) {
-          errors.push(`X API: Rate limited, skipping remaining accounts`);
-          break;
-        }
-        errors.push(
-          `X API: Failed to fetch tweets for @${account.handle}: HTTP ${res.status}`,
-        );
-        continue;
-      }
-
-      const data = await res.json();
-      const allTweets = data.data || [];
-
-      // Filter out already-seen tweets, cap at 3
-      const newTweets = [];
-      for (const t of allTweets) {
-        if (state.seenTweets[t.id]) continue; // dedup
-        if (newTweets.length >= MAX_TWEETS_PER_USER) break;
-
-        newTweets.push({
-          id: t.id,
-          // note_tweet.text has the full untruncated text for long tweets (>280 chars)
-          text: t.note_tweet?.text || t.text,
-          createdAt: t.created_at,
-          url: `https://x.com/${account.handle}/status/${t.id}`,
-          likes: t.public_metrics?.like_count || 0,
-          retweets: t.public_metrics?.retweet_count || 0,
-          replies: t.public_metrics?.reply_count || 0,
-          isQuote:
-            t.referenced_tweets?.some((r) => r.type === "quoted") || false,
-          quotedTweetId:
-            t.referenced_tweets?.find((r) => r.type === "quoted")?.id || null,
-        });
-
-        // Mark as seen
-        state.seenTweets[t.id] = Date.now();
-      }
-
-      if (newTweets.length === 0) continue;
-
-      results.push({
-        source: "x",
-        name: account.name,
-        handle: account.handle,
-        bio: userData.description,
-        tweets: newTweets,
-      });
-
-      await new Promise((r) => setTimeout(r, 200));
-    } catch (err) {
-      errors.push(`X API: Error fetching @${account.handle}: ${err.message}`);
-    }
-  }
-
-  return results;
-}
-
 // -- Blog Fetching (HTML scraping) -------------------------------------------
 
 // Scrapes the Anthropic Engineering blog index page.
@@ -977,62 +857,22 @@ async function fetchBlogContent(blogs, state, errors) {
 
 async function main() {
   const args = process.argv.slice(2);
-  const tweetsOnly = args.includes("--tweets-only");
   const podcastsOnly = args.includes("--podcasts-only");
   const blogsOnly = args.includes("--blogs-only");
 
-  // If a specific --*-only flag is set, only that feed type runs.
-  // If no flag is set, all three run.
-  const runTweets = tweetsOnly || (!podcastsOnly && !blogsOnly);
-  const runPodcasts = podcastsOnly || (!tweetsOnly && !blogsOnly);
-  const runBlogs = blogsOnly || (!tweetsOnly && !podcastsOnly);
+  const runPodcasts = podcastsOnly || !blogsOnly;
+  const runBlogs = blogsOnly || !podcastsOnly;
 
-  const xBearerToken = process.env.X_BEARER_TOKEN;
   const pod2txtKey = process.env.POD2TXT_API_KEY;
 
   if (runPodcasts && !pod2txtKey) {
     console.error("POD2TXT_API_KEY not set");
     process.exit(1);
   }
-  if (runTweets && !xBearerToken) {
-    console.error("X_BEARER_TOKEN not set");
-    process.exit(1);
-  }
 
   const sources = await loadSources();
   const state = await loadState();
   const errors = [];
-
-  // Fetch tweets
-  if (runTweets) {
-    console.error("Fetching X/Twitter content...");
-    const xContent = await fetchXContent(
-      sources.x_accounts,
-      xBearerToken,
-      state,
-      errors,
-    );
-    console.error(`  Found ${xContent.length} builders with new tweets`);
-
-    const totalTweets = xContent.reduce((sum, a) => sum + a.tweets.length, 0);
-    const xFeed = {
-      generatedAt: new Date().toISOString(),
-      lookbackHours: TWEET_LOOKBACK_HOURS,
-      x: xContent,
-      stats: { xBuilders: xContent.length, totalTweets },
-      errors:
-        errors.filter((e) => e.startsWith("X API")).length > 0
-          ? errors.filter((e) => e.startsWith("X API"))
-          : undefined,
-    };
-    await writeFile(
-      join(SCRIPT_DIR, "..", "feed-x.json"),
-      JSON.stringify(xFeed, null, 2),
-    );
-    console.error(
-      `  feed-x.json: ${xContent.length} builders, ${totalTweets} tweets`,
-    );
-  }
 
   // Fetch podcasts
   if (runPodcasts) {

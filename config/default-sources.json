@@ -1,77 +1,91 @@
 {
+  "_note": "Default source configuration for feed generation. Podcasts and blogs are fetched by generate-feed.js. YouTube channels are tracked via user-sources.json for direct digest use.",
+
   "podcasts": [
     {
-      "name": "Latent Space",
-      "rssUrl": "https://pod2txt.vercel.app/api/feed?url=https://api.substack.com/feed/podcast/1084089.rss",
-      "url": "https://www.youtube.com/@LatentSpacePod"
+      "name": "Huberman Lab",
+      "rssUrl": "https://feeds.megaphone.fm/hubermanlab",
+      "url": "https://www.youtube.com/@hubermanlab"
     },
     {
-      "name": "Training Data",
-      "rssUrl": "https://feeds.megaphone.fm/trainingdata",
-      "url": "https://www.youtube.com/playlist?list=PLOhHNjZItNnMm5tdW61JpnyxeYH5NDDx8"
+      "name": "Rich Roll Podcast",
+      "rssUrl": "https://feeds.megaphone.fm/the-rich-roll-podcast",
+      "url": "https://richroll.com"
     },
     {
-      "name": "No Priors",
-      "rssUrl": "https://feeds.megaphone.fm/nopriors",
-      "url": "https://www.youtube.com/@NoPriorsPodcast"
+      "name": "Matt Walker Podcast",
+      "rssUrl": "https://rss.buzzsprout.com/1821163.rss",
+      "url": "https://www.sleepdiplomat.com/podcast"
     },
     {
-      "name": "Unsupervised Learning",
-      "rssUrl": "https://feeds.simplecast.com/dOSE_bdP",
-      "url": "https://www.youtube.com/@RedpointAI"
+      "name": "No Stupid Questions",
+      "rssUrl": "https://feeds.simplecast.com/dfh_verV",
+      "url": "https://freakonomics.com/series/nsq/"
     },
     {
-      "name": "The MAD Podcast with Matt Turck",
-      "rssUrl": "https://anchor.fm/s/f2ee4948/podcast/rss",
-      "url": "https://www.youtube.com/@DataDrivenNYC/videos"
+      "name": "Being Well (Rick Hanson)",
+      "rssUrl": "https://feeds.megaphone.fm/BEING3442328255",
+      "url": "https://rickhanson.com/being-well-podcast/"
     },
     {
-      "name": "AI & I by Every",
-      "rssUrl": "https://anchor.fm/s/ed1f5584/podcast/rss",
-      "url": "https://www.youtube.com/playlist?list=PLuMcoKK9mKgHtW_o9h5sGO2vXrffKHwJL"
+      "name": "Neurodiversity Podcast",
+      "rssUrl": "https://mindmatters.libsyn.com/rss",
+      "url": "https://neurodiversitypodcast.com"
+    },
+    {
+      "name": "Deep Questions (Cal Newport)",
+      "rssUrl": "https://feeds.simplecast.com/_IjaDYAj",
+      "url": "https://calnewport.com/podcasts/"
+    },
+    {
+      "name": "Naval Podcast",
+      "rssUrl": "https://nav.al/podcast/feed",
+      "url": "https://nav.al"
+    },
+    {
+      "name": "The Koe Cast",
+      "rssUrl": "https://anchor.fm/s/560a5ae0/podcast/rss",
+      "url": "https://www.youtube.com/@DanKoeTalks"
+    },
+    {
+      "name": "Human School",
+      "rssUrl": "https://feeds.buzzsprout.com/2126493.rss",
+      "url": "https://humanschoolofficial.podbean.com"
+    },
+    {
+      "name": "硅谷101 Podcast",
+      "rssUrl": "https://feeds.fireside.fm/sv101/rss",
+      "url": "https://sv101.fireside.fm"
+    },
+    {
+      "name": "TED Tech",
+      "rssUrl": "https://feeds.acast.com/public/shows/67585c62102e6d4448d44969",
+      "url": "https://www.ted.com/podcasts"
     }
   ],
+
   "blogs": [
     {
-      "name": "Anthropic Engineering",
-      "type": "scrape",
-      "indexUrl": "https://www.anthropic.com/engineering",
-      "articleBaseUrl": "https://www.anthropic.com/engineering/",
-      "fetchMethod": "http"
+      "name": "Paul Graham",
+      "type": "rss",
+      "rssUrl": "http://www.paulgraham.com/rss.html",
+      "indexUrl": "https://paulgraham.com",
+      "fetchMethod": "rss"
     },
     {
-      "name": "Claude Blog",
-      "type": "scrape",
-      "indexUrl": "https://claude.com/blog",
-      "articleBaseUrl": "https://claude.com/blog/",
-      "fetchMethod": "http"
+      "name": "Lenny's Newsletter",
+      "type": "rss",
+      "rssUrl": "https://www.lennysnewsletter.com/feed",
+      "indexUrl": "https://www.lennysnewsletter.com",
+      "fetchMethod": "rss"
+    },
+    {
+      "name": "Stratechery (Ben Thompson)",
+      "type": "rss",
+      "rssUrl": "https://stratechery.com/feed/",
+      "indexUrl": "https://stratechery.com",
+      "fetchMethod": "rss",
+      "_note": "Free articles only — paywalled posts will not appear"
     }
-  ],
-  "x_accounts": [
-    { "name": "Andrej Karpathy", "handle": "karpathy" },
-    { "name": "Swyx", "handle": "swyx" },
-    { "name": "Josh Woodward", "handle": "joshwoodward" },
-    { "name": "Kevin Weil", "handle": "kevinweil" },
-    { "name": "Peter Yang", "handle": "petergyang" },
-    { "name": "Nan Yu", "handle": "thenanyu" },
-    { "name": "Madhu Guru", "handle": "realmadhuguru" },
-    { "name": "Amanda Askell", "handle": "AmandaAskell" },
-    { "name": "Cat Wu", "handle": "_catwu" },
-    { "name": "Thariq", "handle": "trq212" },
-    { "name": "Google Labs", "handle": "GoogleLabs" },
-    { "name": "Amjad Masad", "handle": "amasad" },
-    { "name": "Guillermo Rauch", "handle": "rauchg" },
-    { "name": "Alex Albert", "handle": "alexalbert__" },
-    { "name": "Aaron Levie", "handle": "levie" },
-    { "name": "Ryo Lu", "handle": "ryolu_" },
-    { "name": "Garry Tan", "handle": "garrytan" },
-    { "name": "Matt Turck", "handle": "mattturck" },
-    { "name": "Zara Zhang", "handle": "zarazhangrui" },
-    { "name": "Nikunj Kothari", "handle": "nikunj" },
-    { "name": "Peter Steinberger", "handle": "steipete" },
-    { "name": "Dan Shipper", "handle": "danshipper" },
-    { "name": "Aditya Agarwal", "handle": "adityaag" },
-    { "name": "Sam Altman", "handle": "sama" },
-    { "name": "Claude", "handle": "claudeai" }
   ]
 }

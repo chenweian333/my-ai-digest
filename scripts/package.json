@@ -1,7 +1,7 @@
 {
-  "name": "follow-builders-scripts",
+  "name": "my-ai-digest-scripts",
   "version": "1.0.0",
-  "description": "Scripts for Follow Builders skill — feed generation, digest preparation, delivery",
+  "description": "Scripts for My AI Digest — feed generation, digest preparation, Telegram delivery",
   "type": "module",
   "scripts": {
     "generate-feed": "node generate-feed.js",

@@ -343,4 +343,9 @@ cp prompts/digest-intro.md ~/.follow-builders/prompts/digest-intro.md
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).
+
+This project is built on [follow-builders](https://github.com/zarazhangrui/follow-builders)
+by zarazhangrui, used under the MIT License. The delivery scripts, feed generation
+architecture, and skill framework originate from that project; source selection,
+bilingual format, interactive Q&A, and prompt system are original additions.
