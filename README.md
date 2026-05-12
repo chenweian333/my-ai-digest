@@ -201,19 +201,25 @@ TELEGRAM_BOT_TOKEN=your_bot_token_from_BotFather
 
 ### 4. Schedule daily delivery
 
-Add a cron job to run the digest each morning:
+Add two cron jobs: one to fetch your personal sources (10 minutes before the
+digest), and one to send the digest:
 
 ```bash
 SKILL_DIR="$(pwd)"
+# Fetch personal sources at 7:50am
+(crontab -l 2>/dev/null; echo "50 7 * * * cd $SKILL_DIR/scripts && node fetch-user-sources.js 2>/dev/null") | crontab -
+# Send digest at 8:00am
 (crontab -l 2>/dev/null; echo "0 8 * * * cd $SKILL_DIR/scripts && node prepare-digest.js 2>/dev/null | node deliver.js 2>/dev/null") | crontab -
 ```
 
-Adjust the time (`0 8`) to your preferred hour in your local timezone.
+Adjust the times to your preferred hour in your local timezone. If you have
+no personal sources in `~/.follow-builders/user-sources.json`, you can skip
+the first cron line.
 
 ### 5. Run manually to test
 
 ```bash
-cd scripts && node prepare-digest.js | node deliver.js
+cd scripts && node fetch-user-sources.js && node prepare-digest.js | node deliver.js
 ```
 
 You should receive a digest in your Telegram chat within a minute.
@@ -222,88 +228,99 @@ You should receive a digest in your Telegram chat within a minute.
 
 ## Customizing Your Sources
 
-**How sources actually work:** the feed generator (`generate-feed.js`) runs
-daily on GitHub Actions, reads `config/default-sources.json`, and commits
-updated `feed-podcasts.json` and `feed-blogs.json` to your repo. Your local
-`prepare-digest.js` fetches those files from GitHub each time a digest runs.
+There are two ways to change what appears in your digest, depending on whether
+you want personal additions or want to change the defaults everyone gets.
 
-To change what appears in your digest, edit `config/default-sources.json`
-and push. Actions will pick it up on its next run (6:17am UTC) or you can
-trigger it immediately from the **Actions** tab → **Generate Feeds** →
-**Run workflow**.
+### Option A — Personal sources (recommended)
 
-### Adding a podcast
+Edit `~/.follow-builders/user-sources.json`. This file lives outside the repo
+and is never committed or overwritten by updates. It supports YouTube channels,
+podcast RSS feeds, and blogs all in one place.
 
-Find the show's RSS feed URL (most podcast apps list it in the show details;
-Spotify shows it on the web version under "Share → RSS link"). Then add an
-entry to the `podcasts` array in `config/default-sources.json`:
+```bash
+# Copy the template to get started
+cp config/user-sources.example.json ~/.follow-builders/user-sources.json
+# Then edit it with your sources
+```
+
+The format:
 
 ```json
 {
-  "name": "Huberman Lab",
-  "rssUrl": "https://feeds.megaphone.fm/hubermanlab",
-  "url": "https://www.youtube.com/@hubermanlab"
+  "youtube": [
+    { "name": "Channel Name", "url": "https://www.youtube.com/@handle", "category": "ai_tech" }
+  ],
+  "rss": [
+    { "name": "My Podcast", "rss": "https://feeds.example.com/show.rss",
+      "url": "https://example.com", "type": "podcast", "category": "tech" },
+    { "name": "My Blog",    "rss": "https://example.substack.com/feed",
+      "url": "https://example.substack.com", "type": "blog", "category": "ai" }
+  ]
 }
 ```
 
-The `url` field is the YouTube channel or homepage — used as a fallback link
-in the digest if no specific episode URL is found. The `rssUrl` is what the
-feed generator actually reads to discover new episodes and fetch transcripts.
+After editing, run the fetcher to pull fresh content:
 
-**How to find a podcast RSS URL:**
-- Most podcast apps: open the show → share or info → copy RSS link
+```bash
+cd scripts && node fetch-user-sources.js
+```
+
+This writes `~/.follow-builders/user-feed-podcasts.json` and
+`~/.follow-builders/user-feed-blogs.json`. The next time `prepare-digest.js`
+runs (either manually or via cron), it merges these with the central feeds
+automatically.
+
+To keep your personal sources fresh daily, add a second cron job that runs
+`fetch-user-sources.js` before the digest:
+
+```bash
+SKILL_DIR="$(pwd)"
+(crontab -l 2>/dev/null; echo "50 7 * * * cd $SKILL_DIR/scripts && node fetch-user-sources.js 2>/dev/null") | crontab -
+```
+
+### Finding source URLs
+
+**Podcast RSS:**
+- Most podcast apps: open show → share or info → copy RSS link
 - Substack podcasts: `https://yourshow.substack.com/podcast`
-- Spotify: open the show on web → three dots → Share → RSS feed
-- The show's own website: look in the footer or "About" page
+- Spotify: open show on web → three dots → Share → RSS feed
+- The show's website: look in the footer or "About" page
 
-### Adding a blog or newsletter
-
-Most blogs and Substack/Ghost/WordPress newsletters have a public RSS feed.
-
-```json
-{
-  "name": "Paul Graham",
-  "type": "rss",
-  "rssUrl": "http://www.paulgraham.com/rss.html",
-  "indexUrl": "https://paulgraham.com",
-  "fetchMethod": "rss"
-}
-```
-
-**How to find a blog's RSS URL:**
+**Blog/newsletter RSS:**
 - Substack: `https://yourauthor.substack.com/feed`
 - WordPress: append `/feed` to the homepage URL
 - Ghost: append `/rss/` to the homepage URL
-- Other blogs: look for the RSS icon, or try appending `/rss`, `/feed`, or `/atom.xml`
-- If stuck, search `[blog name] rss feed`
+- Other: try appending `/rss`, `/feed`, or `/atom.xml`; or search `[blog name] rss feed`
 
-### YouTube channels (podcast RSS approach)
+**YouTube channels:** paste the channel URL directly — `fetch-user-sources.js`
+resolves `/@handle`, `/channel/UCxxx`, and `/playlist?list=PL...` formats.
 
-The feed generator processes sources via RSS — it does not scrape YouTube
-directly for source selection. Most major YouTube podcasters also publish a
-standard podcast RSS feed, which is what you should use:
+### Option B — Change the default sources
 
-| Creator | Find their RSS by... |
-|---|---|
-| Has a Spotify page | Web Spotify → show page → Share → RSS link |
-| Has a website | Check footer for "podcast" or RSS link |
-| Substack-based | `https://theirsubstack.substack.com/podcast` |
-| Apple Podcasts | Open in browser → right-click title → Copy RSS |
+To change the sources that `generate-feed.js` processes on GitHub Actions
+(useful if you're running a fork for multiple people), edit
+`config/default-sources.json` and push. Actions picks it up on its next run
+(6:17am UTC), or trigger it immediately from **Actions** → **Generate Feeds**
+→ **Run workflow**.
 
-If a creator publishes exclusively on YouTube with no podcast feed, they
-cannot currently be tracked by the feed generator.
+The format in `default-sources.json` uses `rssUrl` (not `rss`) as the field name:
 
-### Removing a source
-
-Delete its entry from `config/default-sources.json`, then push. The next
-Actions run will no longer process it.
+```json
+{
+  "podcasts": [
+    { "name": "Show Name", "rssUrl": "https://feeds.example.com/show.rss", "url": "https://example.com" }
+  ],
+  "blogs": [
+    { "name": "Blog Name", "type": "rss", "rssUrl": "https://example.com/feed",
+      "indexUrl": "https://example.com", "fetchMethod": "rss" }
+  ]
+}
+```
 
 ### Reference: user-sources.example.json
 
-`config/user-sources.example.json` shows the full source format and is a
-useful reference for planning what you want to add. It is not read by any
-script — copy it to `~/.follow-builders/user-sources.json` to keep a
-personal wishlist of sources separate from the live config.
+`config/user-sources.example.json` shows every supported field with comments.
+It is not read by any script — it is a reference template only.
 
 ---
 

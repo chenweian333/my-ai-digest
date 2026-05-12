@@ -4,7 +4,7 @@
 // Follow Builders — Prepare Digest
 // ============================================================================
 // Gathers everything the LLM needs to produce a digest:
-// - Fetches the central feeds (tweets + podcasts)
+// - Fetches the central feeds (podcasts + blogs) from GitHub
 // - Fetches the latest prompts from GitHub
 // - Reads the user's config (language, delivery method)
 // - Outputs a single JSON blob to stdout
@@ -26,14 +26,16 @@ import { homedir } from 'os';
 const USER_DIR = join(homedir(), '.follow-builders');
 const CONFIG_PATH = join(USER_DIR, 'config.json');
 
-const FEED_X_URL = 'https://raw.githubusercontent.com/chenweian333/my-ai-digest/main/feed-x.json';
 const FEED_PODCASTS_URL = 'https://raw.githubusercontent.com/chenweian333/my-ai-digest/main/feed-podcasts.json';
 const FEED_BLOGS_URL = 'https://raw.githubusercontent.com/chenweian333/my-ai-digest/main/feed-blogs.json';
+
+// Local user feeds — written by fetch-user-sources.js
+const USER_PODCAST_FEED_PATH = join(USER_DIR, 'user-feed-podcasts.json');
+const USER_BLOG_FEED_PATH = join(USER_DIR, 'user-feed-blogs.json');
 
 const PROMPTS_BASE = 'https://raw.githubusercontent.com/chenweian333/my-ai-digest/main/prompts';
 const PROMPT_FILES = [
   'summarize-podcast.md',
-  'summarize-tweets.md',
   'summarize-blogs.md',
   'digest-intro.md',
   'translate.md'
@@ -72,14 +74,18 @@ async function main() {
     }
   }
 
-  // 2. Fetch all three feeds
-  const [feedX, feedPodcasts, feedBlogs] = await Promise.all([
-    fetchJSON(FEED_X_URL),
+  // 2. Fetch central feeds (from GitHub) and local user feeds in parallel
+  const [feedPodcasts, feedBlogs, userPodcastFeedRaw, userBlogFeedRaw] = await Promise.all([
     fetchJSON(FEED_PODCASTS_URL),
-    fetchJSON(FEED_BLOGS_URL)
+    fetchJSON(FEED_BLOGS_URL),
+    existsSync(USER_PODCAST_FEED_PATH)
+      ? readFile(USER_PODCAST_FEED_PATH, 'utf-8').then(JSON.parse).catch(() => null)
+      : Promise.resolve(null),
+    existsSync(USER_BLOG_FEED_PATH)
+      ? readFile(USER_BLOG_FEED_PATH, 'utf-8').then(JSON.parse).catch(() => null)
+      : Promise.resolve(null)
   ]);
 
-  if (!feedX) errors.push('Could not fetch tweet feed');
   if (!feedPodcasts) errors.push('Could not fetch podcast feed');
   if (!feedBlogs) errors.push('Could not fetch blog feed');
 
@@ -132,18 +138,22 @@ async function main() {
       delivery: config.delivery || { method: 'stdout' }
     },
 
-    // Content to remix
-    podcasts: feedPodcasts?.podcasts || [],
-    x: feedX?.x || [],
-    blogs: feedBlogs?.blogs || [],
+    // Content to remix — central feeds merged with user's custom sources
+    podcasts: [
+      ...(feedPodcasts?.podcasts || []),
+      ...(userPodcastFeedRaw?.podcasts || [])
+    ],
+    blogs: [
+      ...(feedBlogs?.blogs || []),
+      ...(userBlogFeedRaw?.blogs || [])
+    ],
 
     // Stats for the LLM to reference
     stats: {
-      podcastEpisodes: feedPodcasts?.podcasts?.length || 0,
-      xBuilders: feedX?.x?.length || 0,
-      totalTweets: (feedX?.x || []).reduce((sum, a) => sum + a.tweets.length, 0),
-      blogPosts: feedBlogs?.blogs?.length || 0,
-      feedGeneratedAt: feedX?.generatedAt || feedPodcasts?.generatedAt || feedBlogs?.generatedAt || null
+      podcastEpisodes: (feedPodcasts?.podcasts?.length || 0) + (userPodcastFeedRaw?.podcasts?.length || 0),
+      blogPosts: (feedBlogs?.blogs?.length || 0) + (userBlogFeedRaw?.blogs?.length || 0),
+      userSourcesIncluded: !!(userPodcastFeedRaw || userBlogFeedRaw),
+      feedGeneratedAt: feedPodcasts?.generatedAt || feedBlogs?.generatedAt || null
     },
 
     // Prompts — the LLM reads these and follows the instructions

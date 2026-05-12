@@ -98,13 +98,17 @@ CFGEOF
 
 ### Step 6: Schedule
 
-Set up cron to run the digest automatically:
+Set up cron jobs to run the digest automatically:
 ```bash
 SKILL_DIR="${CLAUDE_SKILL_DIR}"
+# Fetch personal sources 10 minutes before the digest
+(crontab -l 2>/dev/null; echo "50 7 * * * cd $SKILL_DIR/scripts && node fetch-user-sources.js 2>/dev/null") | crontab -
+# Send the digest
 (crontab -l 2>/dev/null; echo "0 8 * * * cd $SKILL_DIR/scripts && node prepare-digest.js 2>/dev/null | node deliver.js 2>/dev/null") | crontab -
 ```
 
-Adjust the hour to match the user's `deliveryTime`.
+Adjust the hours to match the user's `deliveryTime`. If the user has no
+`~/.follow-builders/user-sources.json`, skip the first cron line.
 
 ### Step 7: Welcome Digest
 

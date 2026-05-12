@@ -66,71 +66,72 @@ Jay Shetty、Chris Williamson、Dan Koe、Simon Sinek、Human School、Deep Ques
 
 ## 自訂你的來源
 
-**來源是如何運作的：** Feed 產生器（`generate-feed.js`）每天透過 GitHub Actions 執行，讀取 `config/default-sources.json`，並將更新後的 `feed-podcasts.json` 和 `feed-blogs.json` 提交至你的 repo。每次生成摘要時，本地的 `prepare-digest.js` 會從 GitHub 抓取這些檔案。
+有兩種方式可以更改摘要內容，視你的需求而定。
 
-要更改摘要中出現的內容，請編輯 `config/default-sources.json` 並推送到 GitHub。Actions 會在下一次排程時執行（UTC 時間 6:17am），或者你可以前往 **Actions** 分頁 → **Generate Feeds** → **Run workflow** 立即觸發。
+### 方式一：個人來源（推薦）
 
-### 新增 Podcast
+編輯 `~/.follow-builders/user-sources.json`。這個檔案存放在 repo 外部，不會被提交或覆蓋。支援 YouTube 頻道、Podcast RSS 和部落格。
 
-找到節目的 RSS feed 網址（大多數 Podcast App 在節目詳情中有列出；Spotify 網頁版可在「分享 → RSS 連結」中找到），然後將條目新增至 `config/default-sources.json` 的 `podcasts` 陣列：
+```bash
+# 複製範本開始使用
+cp config/user-sources.example.json ~/.follow-builders/user-sources.json
+# 然後編輯加入你的來源
+```
+
+格式如下：
 
 ```json
 {
-  "name": "Huberman Lab",
-  "rssUrl": "https://feeds.megaphone.fm/hubermanlab",
-  "url": "https://www.youtube.com/@hubermanlab"
+  "youtube": [
+    { "name": "頻道名稱", "url": "https://www.youtube.com/@handle", "category": "ai_tech" }
+  ],
+  "rss": [
+    { "name": "我的 Podcast", "rss": "https://feeds.example.com/show.rss",
+      "url": "https://example.com", "type": "podcast", "category": "tech" },
+    { "name": "我的部落格", "rss": "https://example.substack.com/feed",
+      "url": "https://example.substack.com", "type": "blog", "category": "ai" }
+  ]
 }
 ```
 
-`url` 是 YouTube 頻道或官網連結，當找不到特定集數連結時作為備用。`rssUrl` 是 Feed 產生器實際讀取的網址，用於發現新集數並抓取逐字稿。
+編輯完成後，執行以下指令抓取最新內容：
 
-**如何找到 Podcast RSS 網址：**
+```bash
+cd scripts && node fetch-user-sources.js
+```
+
+這會產生 `~/.follow-builders/user-feed-podcasts.json` 和 `~/.follow-builders/user-feed-blogs.json`。下次執行 `prepare-digest.js` 時（手動或排程），會自動將這些內容與預設來源合併。
+
+若要讓個人來源每天自動更新，在摘要送出前 10 分鐘新增一個 cron 排程：
+
+```bash
+SKILL_DIR="$(pwd)"
+# 每天 7:50 更新個人來源
+(crontab -l 2>/dev/null; echo "50 7 * * * cd $SKILL_DIR/scripts && node fetch-user-sources.js 2>/dev/null") | crontab -
+```
+
+**如何找到來源網址：**
+
+Podcast RSS：
 - 大多數 Podcast App：開啟節目 → 分享或資訊 → 複製 RSS 連結
 - Substack Podcast：`https://yourshow.substack.com/podcast`
 - Spotify：網頁版開啟節目 → 三個點 → 分享 → RSS feed
-- 節目官網：查看頁尾或「關於」頁面
 
-### 新增部落格或電子報
-
-大多數 Substack、Ghost 或 WordPress 的部落格和電子報都有公開的 RSS feed。
-
-```json
-{
-  "name": "Paul Graham",
-  "type": "rss",
-  "rssUrl": "http://www.paulgraham.com/rss.html",
-  "indexUrl": "https://paulgraham.com",
-  "fetchMethod": "rss"
-}
-```
-
-**如何找到部落格的 RSS 網址：**
+部落格／電子報 RSS：
 - Substack：`https://作者名稱.substack.com/feed`
-- WordPress：在首頁網址後加上 `/feed`
-- Ghost：在首頁網址後加上 `/rss/`
-- 其他部落格：嘗試加上 `/rss`、`/feed` 或 `/atom.xml`
-- 找不到的話：搜尋「[部落格名稱] rss feed」
+- WordPress：首頁網址後加 `/feed`
+- Ghost：首頁網址後加 `/rss/`
+- 找不到：搜尋「[部落格名稱] rss feed」
 
-### YouTube 頻道（使用 Podcast RSS 方式）
+YouTube 頻道：直接貼上頻道網址，`fetch-user-sources.js` 支援 `/@handle`、`/channel/UCxxx`、`/playlist?list=PL...` 等格式。
 
-Feed 產生器透過 RSS 處理來源，不直接爬取 YouTube 頻道。大多數主要的 YouTube Podcast 創作者同時也發布標準 Podcast RSS feed，這是你應該使用的方式：
+### 方式二：修改預設來源
 
-| 創作者類型 | 找到 RSS 的方法 |
-|---|---|
-| 有 Spotify 頁面 | 網頁版 Spotify → 節目頁 → 分享 → RSS 連結 |
-| 有自己的網站 | 查看頁尾是否有「Podcast」或 RSS 連結 |
-| Substack 型 | `https://他們的名稱.substack.com/podcast` |
-| Apple Podcasts | 在瀏覽器開啟 → 右鍵標題 → 複製 RSS |
-
-如果創作者只在 YouTube 發布，沒有 Podcast RSS feed，則目前無法透過 Feed 產生器自動追蹤。
-
-### 移除來源
-
-從 `config/default-sources.json` 中刪除該條目後推送即可。下次 Actions 執行時將不再處理該來源。
+若想更改 GitHub Actions 的 `generate-feed.js` 所使用的來源（適合自行架設供多人使用的版本），請編輯 `config/default-sources.json` 並推送至 GitHub。Actions 會在下次排程時執行（UTC 時間 6:17am），或前往 **Actions** → **Generate Feeds** → **Run workflow** 立即觸發。
 
 ### 參考：user-sources.example.json
 
-`config/user-sources.example.json` 展示了完整的來源格式，適合用來規劃你想新增的內容。**這個檔案不會被任何腳本讀取**——你可以將它複製到 `~/.follow-builders/user-sources.json` 作為個人的來源願望清單，與正式設定分開管理。
+`config/user-sources.example.json` 展示了所有支援的欄位與說明。**這個檔案不會被任何腳本讀取**，僅作為格式參考。
 
 ---
 
