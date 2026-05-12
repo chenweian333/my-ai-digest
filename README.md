@@ -222,66 +222,88 @@ You should receive a digest in your Telegram chat within a minute.
 
 ## Customizing Your Sources
 
-Edit `~/.follow-builders/user-sources.json` (copy from the template first):
+**How sources actually work:** the feed generator (`generate-feed.js`) runs
+daily on GitHub Actions, reads `config/default-sources.json`, and commits
+updated `feed-podcasts.json` and `feed-blogs.json` to your repo. Your local
+`prepare-digest.js` fetches those files from GitHub each time a digest runs.
 
-```bash
-cp config/user-sources.example.json ~/.follow-builders/user-sources.json
-```
+To change what appears in your digest, edit `config/default-sources.json`
+and push. Actions will pick it up on its next run (6:17am UTC) or you can
+trigger it immediately from the **Actions** tab → **Generate Feeds** →
+**Run workflow**.
 
-The file has three sections:
+### Adding a podcast
 
-### YouTube channels
-
-```json
-"youtube": [
-  {
-    "name": "Channel Name",
-    "url": "https://www.youtube.com/@Handle",
-    "category": "ai_tech"
-  }
-]
-```
-
-Use `@Handle` if the channel has one. Use `/channel/UCxxx` if not.
-Use `/playlist?list=PLxxx` to track a specific playlist.
-
-### Podcasts (RSS)
-
-```json
-"rss": [
-  {
-    "name": "Podcast Name",
-    "rss": "https://feeds.example.com/podcast.rss",
-    "url": "https://example.com",
-    "type": "podcast",
-    "category": "psychology"
-  }
-]
-```
-
-Find the RSS feed URL in the podcast app, Spotify's show page, or the
-show's website. Most podcasts publish a public RSS feed.
-
-### Blogs and newsletters
+Find the show's RSS feed URL (most podcast apps list it in the show details;
+Spotify shows it on the web version under "Share → RSS link"). Then add an
+entry to the `podcasts` array in `config/default-sources.json`:
 
 ```json
 {
-  "name": "Author Name",
-  "rss": "https://example.substack.com/feed",
-  "url": "https://example.substack.com",
-  "type": "newsletter",
-  "category": "business"
+  "name": "Huberman Lab",
+  "rssUrl": "https://feeds.megaphone.fm/hubermanlab",
+  "url": "https://www.youtube.com/@hubermanlab"
 }
 ```
 
-Most Substack publications, WordPress blogs, and independent newsletters
-have a public RSS feed. Paywalled posts typically won't appear.
+The `url` field is the YouTube channel or homepage — used as a fallback link
+in the digest if no specific episode URL is found. The `rssUrl` is what the
+feed generator actually reads to discover new episodes and fetch transcripts.
 
-### Category labels
+**How to find a podcast RSS URL:**
+- Most podcast apps: open the show → share or info → copy RSS link
+- Substack podcasts: `https://yourshow.substack.com/podcast`
+- Spotify: open the show on web → three dots → Share → RSS feed
+- The show's own website: look in the footer or "About" page
 
-Categories are free-form — use whatever makes sense to you:
-`ai_tech`, `health_science`, `psychology`, `philosophy`, `mindset`,
-`business`, `leadership`, `productivity`, `culture`
+### Adding a blog or newsletter
+
+Most blogs and Substack/Ghost/WordPress newsletters have a public RSS feed.
+
+```json
+{
+  "name": "Paul Graham",
+  "type": "rss",
+  "rssUrl": "http://www.paulgraham.com/rss.html",
+  "indexUrl": "https://paulgraham.com",
+  "fetchMethod": "rss"
+}
+```
+
+**How to find a blog's RSS URL:**
+- Substack: `https://yourauthor.substack.com/feed`
+- WordPress: append `/feed` to the homepage URL
+- Ghost: append `/rss/` to the homepage URL
+- Other blogs: look for the RSS icon, or try appending `/rss`, `/feed`, or `/atom.xml`
+- If stuck, search `[blog name] rss feed`
+
+### YouTube channels (podcast RSS approach)
+
+The feed generator processes sources via RSS — it does not scrape YouTube
+directly for source selection. Most major YouTube podcasters also publish a
+standard podcast RSS feed, which is what you should use:
+
+| Creator | Find their RSS by... |
+|---|---|
+| Has a Spotify page | Web Spotify → show page → Share → RSS link |
+| Has a website | Check footer for "podcast" or RSS link |
+| Substack-based | `https://theirsubstack.substack.com/podcast` |
+| Apple Podcasts | Open in browser → right-click title → Copy RSS |
+
+If a creator publishes exclusively on YouTube with no podcast feed, they
+cannot currently be tracked by the feed generator.
+
+### Removing a source
+
+Delete its entry from `config/default-sources.json`, then push. The next
+Actions run will no longer process it.
+
+### Reference: user-sources.example.json
+
+`config/user-sources.example.json` shows the full source format and is a
+useful reference for planning what you want to add. It is not read by any
+script — copy it to `~/.follow-builders/user-sources.json` to keep a
+personal wishlist of sources separate from the live config.
 
 ---
 
